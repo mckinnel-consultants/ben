@@ -1,0 +1,247 @@
+{
+  "hands": {
+    "N": [
+      "SA",
+      "H2",
+      "C3",
+      "D9",
+      "DQ",
+      "D3",
+      "S3",
+      "HT",
+      "CA",
+      "C9",
+      "D7",
+      "H8",
+      "S8"
+    ],
+    "E": [
+      "SK",
+      "HK",
+      "S9",
+      "DT",
+      "D5",
+      "ST",
+      "S6",
+      "H5",
+      "CK",
+      "C5",
+      "C8",
+      "S2",
+      "HJ"
+    ],
+    "S": [
+      "HQ",
+      "HA",
+      "DA",
+      "D8",
+      "C6",
+      "D2",
+      "D4",
+      "H9",
+      "SQ",
+      "CQ",
+      "H4",
+      "C4",
+      "DJ"
+    ],
+    "W": [
+      "SJ",
+      "H3",
+      "H6",
+      "DK",
+      "CT",
+      "H7",
+      "S4",
+      "C7",
+      "S5",
+      "C2",
+      "S7",
+      "D6",
+      "CJ"
+    ]
+  },
+  "plays": [
+    {
+      "seat": "N",
+      "card": "C9"
+    },
+    {
+      "seat": "E",
+      "card": "C5"
+    },
+    {
+      "seat": "S",
+      "card": "C6"
+    },
+    {
+      "seat": "W",
+      "card": "CJ"
+    },
+    {
+      "seat": "W",
+      "card": "DK"
+    },
+    {
+      "seat": "N",
+      "card": "D7"
+    },
+    {
+      "seat": "E",
+      "card": "DT"
+    },
+    {
+      "seat": "S",
+      "card": "D2"
+    },
+    {
+      "seat": "W",
+      "card": "H7"
+    },
+    {
+      "seat": "N",
+      "card": "HT"
+    },
+    {
+      "seat": "E",
+      "card": "HJ"
+    },
+    {
+      "seat": "S",
+      "card": "H9"
+    },
+    {
+      "seat": "E",
+      "card": "D5"
+    },
+    {
+      "seat": "S",
+      "card": "D4"
+    },
+    {
+      "seat": "W",
+      "card": "D6"
+    },
+    {
+      "seat": "N",
+      "card": "DQ"
+    },
+    {
+      "seat": "N",
+      "card": "C3"
+    },
+    {
+      "seat": "E",
+      "card": "C8"
+    },
+    {
+      "seat": "S",
+      "card": "CQ"
+    },
+    {
+      "seat": "W",
+      "card": "C2"
+    },
+    {
+      "seat": "S",
+      "card": "SQ"
+    },
+    {
+      "seat": "W",
+      "card": "S7"
+    },
+    {
+      "seat": "N",
+      "card": "S3"
+    },
+    {
+      "seat": "E",
+      "card": "S9"
+    },
+    {
+      "seat": "S",
+      "card": "D8"
+    },
+    {
+      "seat": "W",
+      "card": "CT"
+    },
+    {
+      "seat": "N",
+      "card": "D3"
+    },
+    {
+      "seat": "E",
+      "card": "S2"
+    },
+    {
+      "seat": "S",
+      "card": "C4"
+    },
+    {
+      "seat": "W",
+      "card": "C7"
+    },
+    {
+      "seat": "N",
+      "card": "CA"
+    },
+    {
+      "seat": "E",
+      "card": "CK"
+    },
+    {
+      "seat": "N",
+      "card": "D9"
+    },
+    {
+      "seat": "E",
+      "card": "ST"
+    },
+    {
+      "seat": "S",
+      "card": "DA"
+    },
+    {
+      "seat": "W",
+      "card": "S4"
+    },
+    {
+      "seat": "S",
+      "card": "H4"
+    },
+    {
+      "seat": "W",
+      "card": "H6"
+    },
+    {
+      "seat": "N",
+      "card": "H8"
+    },
+    {
+      "seat": "E",
+      "card": "H5"
+    },
+    {
+      "seat": "N",
+      "card": "S8"
+    },
+    {
+      "seat": "E",
+      "card": "S6"
+    },
+    {
+      "seat": "S",
+      "card": "DJ"
+    },
+    {
+      "seat": "W",
+      "card": "S5"
+    }
+  ],
+  "contract": {
+    "declarer": "W",
+    "strain": "N"
+  },
+  "note": "After eleven completed tricks: N SA H2; E SK HK; S HQ HA; W SJ H3, N on lead. NS can force both tricks, but discarding HA under SA loses to HK. Partial SA,SK,HA leaves NS only one trick."
+}

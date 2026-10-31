@@ -124,7 +124,7 @@ Endpoints preserve the replay adapter's compact format: `GET /bid`, `/lead`,
 `HT`, etc. `POST /explain` takes only `auction` and `dealer` and returns the
 public call meanings; no player's hand is accepted. The older `GET /explain`
 format remains supported. `GET /` advertises the exact profile, rule-based
-bidding, inference method, native DDS readiness and `review_api: 1`.
+bidding, inference method, native DDS readiness, `review_api: 1` and `claim_api: 1`.
 Bind behind the application boundary; this service itself is not user-authenticated.
 
 ### Completed-board double-dummy review
@@ -141,5 +141,25 @@ contracts and a score signed for NS. Vulnerability is respected. A par contract
 may be a doubled sacrifice; it is not necessarily a makeable contract or the
 highest level one side could make if the opponents remained silent. Tests cover
 the exact table, vulnerability, each dealer, seat rotation and a sacrifice.
+
+### Claim referee
+
+`POST /claim` takes exactly `{hands, plays, contract, claim}`. Hands are four
+original arrays of thirteen distinct cards; plays contain `{seat, card}` records;
+contract contains only `{declarer, strain}`; claim contains `{side, tricks}` with
+side `NS` or `EW` and the requested remaining-trick count. The referee validates
+the full deal and all play legality before calling DDS with remaining cards,
+the current trick's leader and up to three played cards. The partial trick is
+included in the remaining count, and the score is oriented to the claiming side.
+
+The claimant may play optimally against best defence, including partner's good
+choices. Earlier implementations incorrectly required the claim to survive
+every claimant blunder. This is a perfect-information playing rule, not a
+tournament-law interpretation of an announced line. Native solving works at
+any point in the hand; a zero-trick concession needs no solver. Returned data
+contains only the result and trick counts, never hidden cards. The replay app
+must authorize and freeze the exact position while its separate claim review
+job runs, validate the returned side/count and reject stale results. No claim
+deal or analysis is passed to `/bid`, `/lead` or `/play`.
 
 The fork retains BEN's GPL-3.0 license and native DDS's separate license.

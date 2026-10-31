@@ -13,6 +13,7 @@ from acol.system import choose_bid, decision_payload, interpret_auction, interpr
 from acol.play import reconstruct
 from acol.sampling import choose_card
 from acol.analysis import analyze_deal
+from acol.claims import adjudicate_claim
 
 
 def _review_result(hands, dealer, vulnerability, native):
@@ -20,6 +21,16 @@ def _review_result(hands, dealer, vulnerability, native):
     # arguments and native exception strings out of those diagnostics.
     try:
         return analyze_deal(hands, dealer, vulnerability, native), None
+    except ValueError:
+        return None, 'invalid'
+    except Exception:
+        return None, 'failed'
+
+
+def _claim_result(body, native):
+    # Full-deal referee errors must not leak private cards through worker logs.
+    try:
+        return adjudicate_claim(body['hands'], body['plays'], body['contract'], body['claim'], native), None
     except ValueError:
         return None, 'invalid'
     except Exception:
@@ -61,7 +72,7 @@ def create_app(solver=None, samples=24, candidates=512, review_solver=None):
         return jsonify(name='BEN EBU Acol rules + public-auction sampling + DDS',
                        system=PROFILE, bidding_engine='rules', neural_fallback=False,
                        inference='acol-public-auction-constraints', dds_ready=solver is not None,
-                       review_api=1)
+                       review_api=1, claim_api=1)
 
     @app.get('/bid')
     def bid():
@@ -126,6 +137,24 @@ def create_app(solver=None, samples=24, candidates=512, review_solver=None):
             raise ValueError('Invalid review input')
         if failure:
             raise RuntimeError('Native review failed')
+        return jsonify(result)
+
+    @app.post('/claim')
+    def claim():
+        if solver is None:
+            return jsonify(error='DDS is not ready'), 503
+        body = request.get_json()
+        if request.args or not isinstance(body, dict) or set(body) != {'hands', 'plays', 'contract', 'claim'}:
+            raise ValueError('Expected an isolated full-deal claim position')
+        native = review_solver
+        if native is None:
+            from ddsolver.ddsolver import dds3
+            native = dds3
+        result, failure = review_pool.submit(_claim_result, body, native).result()
+        if failure == 'invalid':
+            raise ValueError('Invalid claim input')
+        if failure:
+            raise RuntimeError('Native claim failed')
         return jsonify(result)
 
     @app.get('/lead')
