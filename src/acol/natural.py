@@ -571,7 +571,7 @@ def interpret(auction, call, profile):
     suit, level = call.strain, call.level
     if not auction.opening:
         if level == 1 and suit in SUITS:
-            return _m('Natural opening, possibly a distributional Rule of 20 hand.', 'A2.1', hcp_min=9, min_length={suit: 4}, suit=suit)
+            return _m('Natural opening, possibly a distributional Rule of 20 hand.', 'A2.1', hcp_min=9, min_length={suit: 4}, suit=suit, strength={'min': 12, 'unit': 'HCP', 'note': 'Lighter openings may use the Rule of 20.'})
         if level == 2 and suit in profile.get('weak_twos', ['D', 'H', 'S']):
             low, high = profile.get('weak_two_range', [5, 9])
             return _m('Weak two with a decent six-card suit.', 'A2.10.4', hcp_min=low, hcp_max=high, min_length={suit: 6}, max_length={suit: 6}, suit=suit)
@@ -642,7 +642,7 @@ def interpret(auction, call, profile):
             return _m('Return to the agreed major.', 'A2.2.2', suit=first, forcing='signoff' if _game(call.bid) else 'game')
         if suit == response.strain and suit in SUITS:
             jump = _jump(auction, call.bid)
-            return _m('Support for responder’s suit; distribution can replace high cards.', 'A2.5.1-2', hcp_min=9, min_length={suit: 4}, suit=suit, forcing='signoff' if _game(call.bid) else 'invite' if jump else 'none')
+            return _m('Support for responder’s suit; distribution can replace high cards.', 'A2.5.1-2', hcp_min=9, min_length={suit: 4}, suit=suit, forcing='signoff' if _game(call.bid) else 'invite' if jump else 'none', strength={'min': 19 if _game(call.bid) else 16 if jump else 12, **({} if _game(call.bid) else {'max': 18 if jump else 15}), 'unit': 'points', 'note': 'Including distribution; fewer HCP may suffice.'})
         if suit == first:
             jump = _jump(auction, call.bid)
             return _m('Strong long-suit rebid.' if jump else 'Minimum rebid; may be four cards with 4-4-4-1 shape.', 'A2.5.1-2', hcp_min=16 if jump else 9, hcp_max=18 if jump and not _game(call.bid) else 37 if _game(call.bid) else 18, min_length={first: 6 if jump else 4}, suit=first, forcing='game' if jump and response.level == 2 and response.strain != 'N' else 'invite' if jump and not _game(call.bid) else 'none')

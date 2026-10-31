@@ -224,6 +224,10 @@ class Meaning:
     stoppers: tuple = ()
     min_total_length: list = field(default_factory=list)
     confidence: float = 1.0
+    # Nominal strength for public explanations; broad inference constraints
+    # above still allow the documented distributional exceptions.
+    strength: Optional[dict] = None
+    meaning_version: int = 2
 
     def penalty(self, hand):
         deviation = max(0, self.hcp_min - hand.hcp, hand.hcp - self.hcp_max) * .4

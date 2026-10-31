@@ -38,6 +38,25 @@ class NaturalAcolTests(unittest.TestCase):
     def test_equal_four_card_majors_open_hearts(self):
         self.assert_bid('AQ32.KJ43.Q32.32', '1H')
 
+    def test_public_strength_explains_normal_openings_without_excluding_rule20(self):
+        for suit in 'CDHS':
+            m = meaning([], '1' + suit)
+            self.assertEqual(m.strength['min'], 12)
+            self.assertEqual(m.strength['unit'], 'HCP')
+            self.assertIn('Rule of 20', m.strength['note'])
+            self.assertEqual(m.hcp_min, 9)
+        hand = Hand('AQ982.KJT43.5.96')
+        self.assertEqual(meaning([], '1S').penalty(hand), 0)
+
+    def test_opener_support_strength_tracks_single_jump_and_game_raises(self):
+        for opening, response in [('1C', '1S'), ('1D', '1H')]:
+            for level, expected, forcing in [(2, (12, 15), 'none'), (3, (16, 18), 'invite'), (4, (19, None), 'signoff')]:
+                m = meaning([opening, response], str(level) + response[1])
+                self.assertEqual((m.strength['min'], m.strength.get('max')), expected)
+                self.assertEqual(m.strength['unit'], 'points')
+                self.assertEqual(m.min_length, {response[1]: 4})
+                self.assertEqual(m.forcing, forcing)
+
     def test_rule20_reference_examples(self):
         self.assert_bid('AQ982.KJT43.5.96', '1S')
         self.assert_bid('Q2.AJ64.J3.K9532', 'PASS')
