@@ -256,7 +256,9 @@ class DDSolver:
         try:
             solved = list(self._pool.map(_solve_one, hands_pbn))
         except Exception as e:
-            print(f"{Fore.RED}DDS error: {e} {hands_pbn[0].encode('utf-8')} {current_trick} {leader_i}{Style.RESET_ALL}")
+            # Service callers supply private hands. Never log a deal or a native
+            # exception message that may contain the original PBN on failure.
+            print(f"{Fore.RED}DDS error: {type(e).__name__}{Style.RESET_ALL}")
             return None
 
         if solutions == 1:

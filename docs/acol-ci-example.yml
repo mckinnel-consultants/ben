@@ -1,0 +1,19 @@
+name: Acol regression
+on:
+  push:
+    branches: [acol-ebu-weak-twos]
+  pull_request:
+    paths: ['src/acol/**', 'src/acol_api.py', 'tests/acol/**', 'requirements-acol.txt']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  conventions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-acol.txt
+      - run: PYTHONPATH=src python -m unittest discover -s tests/acol -v

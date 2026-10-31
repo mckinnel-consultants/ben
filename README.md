@@ -1,3 +1,5 @@
+> This fork adds [EBU Acol bidding and inference](docs/acol.md), with weak twos and RKCB 0314. Run `src/acol_api.py` for the Acol service; upstream entrypoints below retain their original systems.
+
 # Bridge Engine
 
 This is a game engine for [bridge](https://en.wikipedia.org/wiki/Contract_bridge).
