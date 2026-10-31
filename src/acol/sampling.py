@@ -30,7 +30,7 @@ def validate_visible(known, state):
             raise ValueError('Played card belongs to another visible hand')
 
 
-def sample_deals(known, auction, plays=(), count=24, candidates=512, profile=None):
+def _sampling_state(known, auction, plays, count, candidates):
     if not 1 <= count <= 64 or not count <= candidates <= 8192:
         raise ValueError('Invalid sample budget')
     state = reconstruct(plays, auction.contract)
@@ -45,6 +45,24 @@ def sample_deals(known, auction, plays=(), count=24, candidates=512, profile=Non
     allowed = {c: [s for s in unknown if c[0] not in state['voids'][s]] for c in pool}
     if any(not seats for seats in allowed.values()):
         raise ValueError('Public voids leave a card without an owner')
+    # Check exact capacity feasibility before the forced-card fast path. There
+    # are at most four concealed seats, so every seat subset is inexpensive to
+    # inspect. Cards restricted to a subset must fit its remaining capacity.
+    for mask in range(1, 1 << len(unknown)):
+        subset = {s for i, s in enumerate(unknown) if mask & (1 << i)}
+        restricted = sum(set(seats).issubset(subset) for seats in allowed.values())
+        if restricted > sum(capacities[s] for s in subset):
+            raise ValueError('Public voids exceed a concealed hand capacity')
+    return state, unknown, pool, capacities, allowed
+
+
+def sample_deals(known, auction, plays=(), count=24, candidates=512, profile=None):
+    prepared = _sampling_state(known, auction, plays, count, candidates)
+    return _sample_deals(known, auction, plays, count, candidates, profile, prepared)
+
+
+def _sample_deals(known, auction, plays, count, candidates, profile, prepared):
+    state, unknown, pool, capacities, allowed = prepared
     meanings = {s: [] for s in unknown}
     for call, meaning in interpret_auction(auction, profile):
         if call.seat in meanings and meaning.confidence:
@@ -99,14 +117,19 @@ def sample_deals(known, auction, plays=(), count=24, candidates=512, profile=Non
 
 
 def choose_card(known, auction, plays, solver, count=24, candidates=512, profile=None):
-    samples, state, diagnostics = sample_deals(known, auction, plays, count, candidates, profile)
+    prepared = _sampling_state(known, auction, plays, count, candidates)
+    state = prepared[0]
     if state['turn'] not in known:
         raise ValueError('Acting hand must be visible to the engine')
     legal = legal_cards(known[state['turn']], state)
     if not legal:
         raise ValueError('No cards remain to play')
     if len(legal) == 1:
-        return {'card': legal[0], 'source': 'forced-legal-card', 'inference': diagnostics}
+        return {'card': legal[0], 'source': 'forced-legal-card',
+                'inference': {'method': 'forced-legal-card', 'samples': 0,
+                              'candidates': 0, 'card_constraints': 'hard',
+                              'auction_constraints': 'not-needed'}}
+    samples, state, diagnostics = _sample_deals(known, auction, plays, count, candidates, profile, prepared)
     pbns = []
     for deal in samples:
         holdings = []

@@ -9,7 +9,7 @@ from dataclasses import asdict
 from flask import Flask, jsonify, request
 from werkzeug.exceptions import HTTPException
 from acol.core import Auction, Hand, PROFILE, seat_index
-from acol.system import choose_bid, decision_payload, interpret_auction
+from acol.system import choose_bid, decision_payload, interpret_auction, interpret_call
 from acol.play import reconstruct
 from acol.sampling import choose_card
 from acol.analysis import analyze_deal
@@ -68,7 +68,21 @@ def create_app(solver=None, samples=24, candidates=512, review_solver=None):
         auction, seat, hand, vul = parse()
         if 'dummy' in request.args or 'played' in request.args:
             raise ValueError('Bidding accepts only one hand and the public auction')
-        return jsonify(decision_payload(choose_bid(hand, auction, seat, vul)))
+        decision = choose_bid(hand, auction, seat, vul)
+        payload = decision_payload(decision)
+        # Interpret the public call separately from the private hand that chose
+        # it. Including this result avoids a second request before publishing
+        # the bid, while keeping exactly the /explain meaning for that auction.
+        try:
+            public = Auction(auction.bids + [decision.bid], auction.dealer)
+            call = public.calls[-1]
+            payload['public_meaning'] = {'seat': call.seat, 'bid': call.bid,
+                                        'system': PROFILE['id'],
+                                        **asdict(interpret_call(auction, call))}
+        except Exception:
+            # Supplementary metadata must never discard an otherwise legal bid.
+            app.logger.warning('Public bid meaning unavailable')
+        return jsonify(payload)
 
     @app.get('/explain')
     @app.post('/explain')

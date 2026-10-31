@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from acol_api import create_app
 
 
@@ -16,6 +17,29 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(ready['system']['nt_range'], [12, 14])
         self.assertEqual(ready['system']['rkcb'], '0314')
         self.assertFalse(ready['dds_ready'])
+
+    def test_bid_includes_the_public_explanation_without_private_hand_constraints(self):
+        responses = [self.client.get('/bid', query_string={**self.params, 'hand': hand}).json
+                     for hand in ['KJ32.A32.KJ2.432', 'QJ32.A32.KJ2.K32']]
+        for response in responses:
+            self.assertEqual(response['bid'], '1N')
+            explained = self.client.post('/explain', json={
+                'dealer': 'N', 'auction': [{'seat': 'N', 'bid': response['bid']}],
+            }).json
+            self.assertEqual(response['public_meaning'], {
+                **explained['calls'][-1], 'system': explained['system'],
+            })
+        self.assertEqual(responses[0]['public_meaning'], responses[1]['public_meaning'])
+        self.assertEqual((responses[0]['public_meaning']['hcp_min'],
+                          responses[0]['public_meaning']['hcp_max']), (12, 14))
+
+    def test_supplementary_meaning_failure_does_not_discard_a_legal_bid(self):
+        with patch('acol_api.interpret_call', side_effect=RuntimeError('private diagnostic')):
+            response = self.client.get('/bid', query_string=self.params)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['bid'], '1N')
+        self.assertNotIn('public_meaning', response.json)
+        self.assertNotIn('private diagnostic', response.text)
 
     def test_reject_hidden_deals_invalid_turn_and_dummy_before_lead(self):
         for extra in [dict(deal='private'), dict(dummy=self.params['hand']), dict(played=''), dict(seat='E'), dict(ctx='1N1C'), dict(hand='bad')]:

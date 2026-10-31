@@ -1,5 +1,6 @@
 import random
 import unittest
+from unittest.mock import Mock, patch
 from acol.core import Auction, Hand, Meaning, PROFILE
 from acol.play import reconstruct, legal_cards, card_code
 from acol.sampling import sample_deals, choose_card, DECK
@@ -94,6 +95,37 @@ class SamplingTests(unittest.TestCase):
                 return None
         with self.assertRaises(RuntimeError):
             choose_card(self.known, self.auction, [], FailedSolver(), count=8, candidates=64)
+
+    def test_forced_card_skips_sampling_and_dds_but_keeps_input_validation(self):
+        auction = Auction(['1N', 'PASS', 'PASS', 'PASS'])
+        known = {1: Hand('.AKQJT98765432..'), 2: Hand('..AKQJT98765432.')}
+        plays = [suit + rank for rank in '23456789TJQK' for suit in 'HDCS']
+        solver = Mock()
+        with patch('acol.sampling._sample_deals', side_effect=AssertionError('No sampling for forced cards')):
+            result = choose_card(known, auction, plays, solver)
+            self.assertEqual(result['card'], 'HA')
+            self.assertEqual(result['source'], 'forced-legal-card')
+            self.assertEqual(result['inference']['samples'], 0)
+            for visible, history, options in [
+                (known, plays + ['H2'], {}),  # Duplicate public card.
+                ({**known, 0: known[1]}, plays, {}),  # Overlapping visible hands.
+                ({1: Hand('A.KQJT98765432..'), 2: known[2]}, plays, {}),
+                ({2: known[2]}, plays, {}),  # Acting hand is not visible.
+                (known, plays, {'count': 0}),  # Invalid budget stays invalid.
+            ]:
+                with self.assertRaises(ValueError):
+                    choose_card(visible, auction, history, solver, **options)
+        solver.solve.assert_not_called()
+
+    def test_forced_follow_suit_does_not_sample_concealed_cards(self):
+        auction = Auction(['1N', 'PASS', 'PASS', 'PASS'])
+        # South must follow the opening spade with its only spade; none of
+        # the actual concealed North/West cards are needed to select it.
+        known = {2: Hand('2.AKQJ.AKQJ.AKQJ')}
+        with patch('acol.sampling._sample_deals', side_effect=AssertionError('Unexpected sample')):
+            result = choose_card(known, auction, ['SA'], Mock())
+        self.assertEqual(result['card'], 'S2')
+        self.assertEqual(result['inference']['candidates'], 0)
 
 
 if __name__ == '__main__':
