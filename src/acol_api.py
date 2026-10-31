@@ -12,10 +12,29 @@ from acol.core import Auction, Hand, PROFILE, seat_index
 from acol.system import choose_bid, decision_payload, interpret_auction
 from acol.play import reconstruct
 from acol.sampling import choose_card
+from acol.analysis import analyze_deal
 
 
-def create_app(solver=None, samples=24, candidates=512):
+def _review_result(hands, dealer, vulnerability, native):
+    # gevent reports unhandled thread-pool exceptions. Keep private review
+    # arguments and native exception strings out of those diagnostics.
+    try:
+        return analyze_deal(hands, dealer, vulnerability, native), None
+    except ValueError:
+        return None, 'invalid'
+    except Exception:
+        return None, 'failed'
+
+
+def create_app(solver=None, samples=24, candidates=512, review_solver=None):
+    from gevent.threadpool import ThreadPoolExecutor
     app = Flask(__name__)
+    app.config['MAX_CONTENT_LENGTH'] = 65536
+    # A native full-deal solve must not occupy the gevent request hub. One
+    # review at a time, with at most two DDS workers, leaves readiness and bid
+    # explanation requests responsive while review work is running.
+    review_pool = ThreadPoolExecutor(max_workers=1)
+    app.extensions['acol_review_pool'] = review_pool
     # GET requests contain private cards. Neither access logs nor exception
     # diagnostics should print request URLs or query parameters.
     logging.getLogger('werkzeug').disabled = True
@@ -41,7 +60,8 @@ def create_app(solver=None, samples=24, candidates=512):
     def ready():
         return jsonify(name='BEN EBU Acol rules + public-auction sampling + DDS',
                        system=PROFILE, bidding_engine='rules', neural_fallback=False,
-                       inference='acol-public-auction-constraints', dds_ready=solver is not None)
+                       inference='acol-public-auction-constraints', dds_ready=solver is not None,
+                       review_api=1)
 
     @app.get('/bid')
     def bid():
@@ -51,9 +71,48 @@ def create_app(solver=None, samples=24, candidates=512):
         return jsonify(decision_payload(choose_bid(hand, auction, seat, vul)))
 
     @app.get('/explain')
+    @app.post('/explain')
     def explain():
-        auction, _, _, _ = parse()
+        if request.method == 'GET':
+            # Keep the old adapter format available, but new callers send only
+            # the public auction. No private hand participates in interpretation.
+            if 'hand' in request.args:
+                auction, _, _, _ = parse()
+            else:
+                allowed = {'dealer', 'ctx'}
+                if set(request.args) - allowed or any(len(v) != 1 for _, v in request.args.lists()):
+                    raise ValueError('Unknown public explanation field')
+                ctx = request.args.get('ctx', '')
+                if len(ctx) % 2 or len(ctx) > 640:
+                    raise ValueError('Invalid compact auction')
+                auction = Auction([ctx[i:i + 2] for i in range(0, len(ctx), 2)], request.args.get('dealer', 'N'))
+        else:
+            body = request.get_json()
+            if request.args or not isinstance(body, dict) or set(body) != {'auction', 'dealer'} or not isinstance(body['auction'], list) or len(body['auction']) > 160:
+                raise ValueError('Expected public auction and dealer only')
+            if any(not isinstance(call, (str, dict)) or
+                   (isinstance(call, dict) and set(call) != {'seat', 'bid'}) for call in body['auction']):
+                raise ValueError('Public calls contain seat and bid only')
+            auction = Auction(body['auction'], body['dealer'])
         return jsonify(system=PROFILE['id'], calls=[{'seat': c.seat, 'bid': c.bid, **asdict(m)} for c, m in interpret_auction(auction)])
+
+    @app.post('/analyze')
+    def analyze():
+        if solver is None:
+            return jsonify(error='DDS is not ready'), 503
+        body = request.get_json()
+        if request.args or not isinstance(body, dict) or set(body) != {'hands', 'dealer', 'vulnerability'}:
+            raise ValueError('Expected a complete review deal, dealer and vulnerability')
+        native = review_solver
+        if native is None:
+            from ddsolver.ddsolver import dds3
+            native = dds3
+        result, failure = review_pool.submit(_review_result, body['hands'], body['dealer'], body['vulnerability'], native).result()
+        if failure == 'invalid':
+            raise ValueError('Invalid review input')
+        if failure:
+            raise RuntimeError('Native review failed')
+        return jsonify(result)
 
     @app.get('/lead')
     @app.get('/play')

@@ -89,7 +89,9 @@ card-play evaluator does not promise the special lead requested by that double.
 Bidding accepts one original thirteen-card hand and the public auction.
 Opening lead accepts only the leader's hand. Later card play also accepts the
 exposed dummy; dummy decisions are made with the declarer's hand and dummy.
-The endpoint never receives actual concealed hands or historical travellers.
+The live decision endpoints never receive actual concealed hands or historical
+travellers. The separate completed-board review endpoint below deliberately
+accepts a complete deal, after the host application has authorized its release.
 
 The sampler retains the best 24 of up to 512 random candidate assignments under
 the recognized Acol HCP, shape, length and keycard meanings. Public ownership
@@ -119,8 +121,25 @@ python3.12 src/acol_api.py --host 127.0.0.1 --port 8085 --threads 2
 Endpoints preserve the replay adapter's compact format: `GET /bid`, `/lead`,
 `/play` with `hand`, `seat`, `dealer`, `vul`, `ctx`; `/play` adds `dummy` and
 `played`. Calls use two characters (`1N`, `--`, `Db`, `Rd`); cards use `SA`,
-`HT`, etc. `GET /explain` returns the public call meanings. `GET /` advertises
-the exact profile, rule-based bidding, inference method and native DDS readiness.
+`HT`, etc. `POST /explain` takes only `auction` and `dealer` and returns the
+public call meanings; no player's hand is accepted. The older `GET /explain`
+format remains supported. `GET /` advertises the exact profile, rule-based
+bidding, inference method, native DDS readiness and `review_api: 1`.
 Bind behind the application boundary; this service itself is not user-authenticated.
+
+### Completed-board double-dummy review
+
+`POST /analyze` accepts JSON `{hands, dealer, vulnerability}`. `hands` contains
+exactly four distinct original thirteen-card hands keyed by N/E/S/W. This is a
+separate perfect-information analysis path: it never feeds live bidding or
+sampled card play. The replay application permits the request only after that
+table has completed the board, and sends it as a separate review job through
+the existing worker queue.
+
+The result includes the native DDS 20-cell trick table, plus dealer-aware par
+contracts and a score signed for NS. Vulnerability is respected. A par contract
+may be a doubled sacrifice; it is not necessarily a makeable contract or the
+highest level one side could make if the opponents remained silent. Tests cover
+the exact table, vulnerability, each dealer, seat rotation and a sacrifice.
 
 The fork retains BEN's GPL-3.0 license and native DDS's separate license.
