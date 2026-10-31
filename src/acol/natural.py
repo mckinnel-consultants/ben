@@ -561,6 +561,8 @@ def choose(ctx):
 
 
 def _m(description, rule, **kw):
+    if rule in ('A2.5.1', 'A2.5.1-2') and kw.get('hcp_min') == 9 and 'strength' not in kw:
+        kw['strength'] = {'min': 12, 'unit': 'HCP', 'note': 'Lighter openings may use the Rule of 20.'}
     return Meaning(description=description, rule=rule, **kw)
 
 

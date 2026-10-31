@@ -45,6 +45,9 @@ class NaturalAcolTests(unittest.TestCase):
             self.assertEqual(m.strength['unit'], 'HCP')
             self.assertIn('Rule of 20', m.strength['note'])
             self.assertEqual(m.hcp_min, 9)
+        for bids, rebid in [(['1C', '1S'], '2C'), (['1C', '1H'], '1S')]:
+            self.assertEqual(meaning(bids, rebid).strength['min'], 12)
+            self.assertEqual(meaning(bids, rebid).hcp_min, 9)
         hand = Hand('AQ982.KJT43.5.96')
         self.assertEqual(meaning([], '1S').penalty(hand), 0)
 
