@@ -333,7 +333,10 @@ def interpret(a, call, profile=None):
             return _m("Natural support for opener in competition", "B1.natural-raise",
                       hcp_min=5 if art else 6, min_length={o.strain: 3}, suit=o.strain, forcing="none")
         if call.is_contract and call.strain != "N":
-            forcing = "one-round" if o.strain != "N" or _jump(a, bid) else "signoff"
+            # Natural game bids place the contract, including jumps after
+            # interference over 1NT. Artificial cues were handled above.
+            forcing = "one-round" if call.level < GAME[call.strain] and \
+                (o.strain != "N" or _jump(a, bid)) else "signoff"
             return _m("Natural response in competition", "B3.1.suit" if o.strain == "N" else "B1.suit",
                       hcp_min=6 if call.level == 1 else 10 if forcing == "one-round" else 0,
                       min_length={call.strain: 5 if o.strain == "N" or
@@ -871,6 +874,12 @@ def _rebid(ctx, scene):
         return _pick(ctx, ctx.cheapest(best))
     if scene == "overcall-rebid":
         first = own[0]
+        # The slam module has already considered genuine slam interest.
+        # Do not turn a natural game raise into another automatic raise;
+        # opponents bidding over game still require competitive evaluation.
+        if p.is_contract and p.strain == first.strain and \
+                p.level >= GAME[first.strain] and a.last_contract == p:
+            return _pass(ctx, "Partner has placed the contract in game", "C1.2.2.accept-game")
         if p.is_contract and o.strain != "N" and p.strain == o.strain:
             if h.hcp <= 11:
                 return _pick(ctx, ctx.cheapest(first.strain))
